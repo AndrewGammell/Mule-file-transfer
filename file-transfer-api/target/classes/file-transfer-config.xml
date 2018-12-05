@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:context="http://www.springframework.org/schema/context" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <context:property-placeholder location="global.properties"/>
+    <http:listener-config name="Api_HTTP_Listener_Configuration" host="${api.http.host}" port="${api.http.port}" doc:name="HTTP Listener Configuration"/>
+    <apikit:config name="Api_Router" raml="file-transfer.raml" consoleEnabled="false" consolePath="console" keepRamlBaseUri="false" doc:name="Router">
+        <apikit:flow-mapping resource="/file-transfer" action="post" content-type="application/json" flow-ref="post:/file-transfer:file-transfer-config"/>
+    </apikit:config>
+    <s3:config name="API_Amazon_S3__Configuration" accessKey="${amazon.access.key}" secretKey="${amazon.secret.key}"  doc:name="Amazon S3: Configuration"/>
+    <sftp:connector name="SFTPInboundConnector" autoDelete="false"  validateConnections="true" doc:name="SFTP" duplicateHandling="addSeqNo" keepFileOnError="true"/>
+    <sftp:endpoint exchange-pattern="request-response" host="${sftp.host}" port="${sftp.port}" path="${sftp.path}" user="${sftp.user}" password="${sftp.password}" name="SFTP_Inbound" responseTimeout="10000" doc:name="SFTP"/>
+    <sftp:connector name="SFTPOutboundConnector" validateConnections="true" doc:name="SFTP"/>
+</mule>
