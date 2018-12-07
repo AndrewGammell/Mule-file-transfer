@@ -4,23 +4,55 @@ version: V1
 baseUri: http://0.0.0.0:8081
 #uses:
 protocols: [http]
-mediaType: application/json
 securedBy: [null]
-
+mediaType: application/json
 #traits:
 
 
 
 
 
-/file-transfer:
-  #is:
-  #tye:
-  post:
-    responses:
-      200:
-        body:
-          application/json:
+/file_transfer:
+  /sftp_to_s3:
+    /{fileName}:
+      get:
+        responses:
+          200:
+            body:
+  /s3_to_sftp:
+    /{fileName}:
+      get:
+        responses:
+          200:
+            body:
+/file_upload:
+  /sftp:
+    /{fileName}:
+      post:
+        responses:
+          200:
+            body:
+  /s3:
+    /{fileName}:
+      post:
+        responses:
+          200:
+            body:
+/file_download:
+  /sftp:
+    /{fileName}:
+      get:
+        responses:
+          200:
+            body:
+  /s3:
+    /{fileName}:
+      get:
+        responses:
+          200:
+            body:
+
+      
             
             
   

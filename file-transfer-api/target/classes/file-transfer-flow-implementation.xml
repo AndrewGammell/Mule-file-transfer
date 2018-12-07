@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:mulerequester="http://www.mulesoft.org/schema/mule/mulerequester" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:mulerequester="http://www.mulesoft.org/schema/mule/mulerequester" xmlns:file="http://www.mulesoft.org/schema/mule/file"
 	xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -13,37 +13,67 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
 http://www.mulesoft.org/schema/mule/mulerequester http://www.mulesoft.org/schema/mule/mulerequester/current/mule-mulerequester.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
-http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd">
     <mulerequester:config name="Mule_Requester" doc:name="Mule Requester"/>
-    <flow name="file-transfer-flow-implementationFlow">
-        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
-        <set-session-variable variableName="route" value="#[payload.route]" doc:name="Route"/>
-        <set-session-variable variableName="fileName" value="#[payload.fileName]" doc:name="FileName"/>
-        <logger message="101010101001010100101010010  #[sessionVars.fileName]" level="INFO" doc:name="Logger"/>
-        <choice doc:name="Choice">
-            <when expression="#[sessionVars.route == &quot;sftp_to_s3&quot;]">
-                <flow-ref name="SFTP_To_S3" doc:name="SFTP_To_S3"/>
-            </when>
-            <when expression="#[sessionVars.route == &quot;s3_to_sftp&quot;]">
-                <flow-ref name="S3_To_SFTP" doc:name="S3_To_SFTP"/>
-            </when>
-            <otherwise>
-                <set-variable variableName="invalidRouteErrorMessage" value="Invalid route selected: &quot;#[sessionVars.route]&quot;, accepted routes &quot;sftp_to_s3&quot;, &quot;s3_to_sftp&quot;" doc:name="ErrorMessage"/>
-                <scripting:transformer doc:name="Groovy">
-                    <scripting:script engine="Groovy"><![CDATA[throw new Exception(flowVars.invalidRouteErrorMessage)]]></scripting:script>
-                </scripting:transformer>
-            </otherwise>
-        </choice>
-    </flow>
-    <sub-flow name="S3_To_SFTP">
-        <s3:get-object-content config-ref="API_Amazon_S3__Configuration" bucketName="${amazon.bucket}" key="#[sessionVars.fileName]" doc:name="Amazon S3"/>
+    <flow name="S3_To_SFTP_Transfer_Implementation">
+        <flow-ref name="Get_S3_File" doc:name="Get_S3_File"/>
         <set-variable variableName="InboundFile" value="#[payload]" doc:name="InboundFile"/>
         <set-payload value="#[flowVars.InboundFile]" doc:name="Set Payload"/>
         <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTPOutboundConnector" outputPattern="#[sessionVars.fileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path}" user="${sftp.user}" password="${sftp.password}" responseTimeout="10000" doc:name="SFTP"/>
-    </sub-flow>
-    <sub-flow name="SFTP_To_S3">
+        <set-payload value="File transferred successfully" doc:name="Set Payload"/>
+    </flow>
+    <flow name="SFTP_To_S3_transfer_Implementation">
+        <flow-ref name="Get_SFTP_File" doc:name="Get_SFTP_File"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload != null  &amp;&amp; payload  != &quot;{NullPayload}&quot;]">
+                <set-variable variableName="InboundFile" value="#[payload]" doc:name="InboundFile"/>
+                <set-payload value="#[flowVars.InboundFile]" doc:name="Set Payload"/>
+                <s3:create-object config-ref="API_Amazon_S3__Configuration" bucketName="${amazon.bucket}" key="#[sessionVars.fileName]" acl="BUCKET_OWNER_FULL_CONTROL" doc:name="Amazon S3"/>
+                <set-payload value="File transferred successfully" doc:name="Set Payload"/>
+            </when>
+            <otherwise>
+                <flow-ref name="FileNotFoundException" doc:name="FileNotFoundException"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="SFTP_File_Upload_Implementation">
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+        <flow-ref name="Get_FileName_Variable" doc:name="Get_FileName_Variable"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTPOutboundConnector" outputPattern="#[sessionVars.fileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path}" user="${sftp.user}" password="${sftp.password}" responseTimeout="10000" doc:name="SFTP"/>
+    </flow>
+    <flow name="S3_File_Upload_Implementation">
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+        <flow-ref name="Get_FileName_Variable" doc:name="Get_FileName_Variable"/>
+        <s3:create-object config-ref="API_Amazon_S3__Configuration" bucketName="${amazon.bucket}" key="#[sessionVars.fileName]" doc:name="Amazon S3"/>
+    </flow>
+    <flow name="SFTP_File_Download_Implementation">
+        <flow-ref name="Get_SFTP_File" doc:name="Get_SFTP_File"/>
+        <logger message="111111111111111111111111111  #[payload]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload != null  &amp;&amp; payload  != &quot;{NullPayload}&quot;]">
+                <set-payload value="#[sessionVars.fileContent]" mimeType="application/xml" doc:name="Set Payload"/>
+                <logger message="222222222222222222222222  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
+                <set-property propertyName="Content-Type" value="application/xml" doc:name="Property"/>
+            </when>
+            <otherwise>
+                <flow-ref name="FileNotFoundException" doc:name="FileNotFoundException"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="S3_File_Download_Implementation">
+        <flow-ref name="Get_S3_File" doc:name="Get_S3_File"/>
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+    </flow>
+    <sub-flow name="Get_SFTP_File">
+        <flow-ref name="Get_FileName_Variable" doc:name="Get_FileName_Variable"/>
         <set-session-variable variableName="sftpURL" value="sftp://${sftp.user}:${sftp.password}@${sftp.host}:${sftp.port}/${sftp.path}?connector=SFTPInboundConnector" doc:name="URL"/>
-    <scripting:transformer doc:name="Groovy">
+        <scripting:transformer doc:name="Groovy">
             <scripting:script engine="Groovy">
                 <scripting:text><![CDATA[
                     def endpointBuilder = muleContext.endpointFactory.getEndpointBuilder(sessionVars['sftpURL']) 
@@ -53,18 +83,23 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                 ]]></scripting:text>
             </scripting:script>
         </scripting:transformer>
-        <choice doc:name="Choice">
-            <when expression="#[payload != null]">
-                <set-variable variableName="InboundFile" value="#[payload]" doc:name="InboundFile"/>
-                <set-payload value="#[flowVars.InboundFile]" doc:name="Set Payload"/>
-                <s3:create-object config-ref="API_Amazon_S3__Configuration" bucketName="${amazon.bucket}" key="#[sessionVars.fileName]" acl="BUCKET_OWNER_FULL_CONTROL" doc:name="Amazon S3"/>
-            </when>
-            <otherwise>
-                <set-variable variableName="errorMessage" value="Couldn't retrieve file: #[sessionVars.fileName]" doc:name="ErrorMessage"/>
-                <scripting:transformer doc:name="Groovy">
-                    <scripting:script engine="Groovy"><![CDATA[throw new FileNotFoundException(flowVars.errorMessage)]]></scripting:script>
-                </scripting:transformer>
-            </otherwise>
-        </choice>
+        <logger message="333333333333333333333  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <logger message="444444444444444444444  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
+        <set-session-variable variableName="fileContent" value="#[payload]" doc:name="FileContent"/>
+    </sub-flow>
+    <sub-flow name="Get_S3_File">
+        <flow-ref name="Get_FileName_Variable" doc:name="Get_FileName_Variable"/>
+        <s3:get-object-content config-ref="API_Amazon_S3__Configuration" bucketName="${amazon.bucket}" key="#[sessionVars.fileName]" doc:name="Amazon S3"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+    </sub-flow>
+    <sub-flow name="FileNotFoundException">
+        <set-variable variableName="errorMessage" value="Couldn't retrieve file: #[sessionVars.fileName]" doc:name="ErrorMessage"/>
+        <scripting:transformer doc:name="Groovy">
+            <scripting:script engine="Groovy"><![CDATA[throw new FileNotFoundException(flowVars.errorMessage)]]></scripting:script>
+        </scripting:transformer>
+    </sub-flow>
+    <sub-flow name="Get_FileName_Variable">
+        <set-session-variable variableName="fileName" value="#[message.inboundProperties.'http.uri.params'.fileName]" doc:name="FileName"/>
     </sub-flow>
 </mule>

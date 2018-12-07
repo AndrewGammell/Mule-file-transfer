@@ -14,10 +14,14 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
     <context:property-placeholder location="global.properties"/>
     <http:listener-config name="Api_HTTP_Listener_Configuration" host="${api.http.host}" port="${api.http.port}" doc:name="HTTP Listener Configuration"/>
     <apikit:config name="Api_Router" raml="file-transfer.raml" consoleEnabled="false" consolePath="console" keepRamlBaseUri="false" doc:name="Router">
-        <apikit:flow-mapping resource="/file-transfer" action="post" content-type="application/json" flow-ref="post:/file-transfer:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_transfer/sftp_to_s3/{fileName}" action="get" flow-ref="get:/file_transfer/sftp_to_s3/{fileName}:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_transfer/s3_to_sftp/{fileName}" action="get" flow-ref="get:/file_transfer/s3_to_sftp/{fileName}:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_upload/sftp/{fileName}" action="post" flow-ref="post:/file_upload/sftp/{fileName}:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_upload/s3/{fileName}" action="post" flow-ref="post:/file_upload/s3/{fileName}:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_download/sftp/{fileName}" action="get" flow-ref="get:/file_download/sftp/{fileName}:file-transfer-config"/>
+        <apikit:flow-mapping resource="/file_download/s3/{fileName}" action="get" flow-ref="get:/file_download/s3/{fileName}:file-transfer-config"/>
     </apikit:config>
     <s3:config name="API_Amazon_S3__Configuration" accessKey="${amazon.access.key}" secretKey="${amazon.secret.key}"  doc:name="Amazon S3: Configuration"/>
     <sftp:connector name="SFTPInboundConnector" autoDelete="false"  validateConnections="true" doc:name="SFTP" duplicateHandling="addSeqNo" keepFileOnError="true"/>
-    <sftp:endpoint exchange-pattern="request-response" host="${sftp.host}" port="${sftp.port}" path="${sftp.path}" user="${sftp.user}" password="${sftp.password}" name="SFTP_Inbound" responseTimeout="10000" doc:name="SFTP"/>
     <sftp:connector name="SFTPOutboundConnector" validateConnections="true" doc:name="SFTP"/>
 </mule>
