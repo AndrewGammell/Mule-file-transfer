@@ -54,12 +54,10 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
     </flow>
     <flow name="SFTP_File_Download_Implementation">
         <flow-ref name="Get_SFTP_File" doc:name="Get_SFTP_File"/>
-        <logger message="111111111111111111111111111  #[payload]" level="INFO" doc:name="Logger"/>
         <choice doc:name="Choice">
             <when expression="#[payload != null  &amp;&amp; payload  != &quot;{NullPayload}&quot;]">
                 <set-payload value="#[sessionVars.fileContent]" mimeType="application/xml" doc:name="Set Payload"/>
-                <logger message="222222222222222222222222  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
-                <set-property propertyName="Content-Type" value="application/xml" doc:name="Property"/>
+                <set-property propertyName="Content-Type" value="application/xml" mimeType="application/xml" doc:name="Property"/>
             </when>
             <otherwise>
                 <flow-ref name="FileNotFoundException" doc:name="FileNotFoundException"/>
@@ -83,9 +81,7 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
                 ]]></scripting:text>
             </scripting:script>
         </scripting:transformer>
-        <logger message="333333333333333333333  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
-        <logger message="444444444444444444444  #[payload]" level="INFO" doc:name="Copy_of_Logger"/>
         <set-session-variable variableName="fileContent" value="#[payload]" doc:name="FileContent"/>
     </sub-flow>
     <sub-flow name="Get_S3_File">
