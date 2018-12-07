@@ -1,2 +1,2 @@
 # Mule-file-transfer
-This api is for transferring files from sftp servers to Amazon S3 storage. It takes a json in through the http.
+This Mule API transfers, uploads and downloads files to and from an SFTP server and Amazon S3 storage.
